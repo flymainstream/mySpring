@@ -4,4 +4,19 @@
 	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
 	version="2.5">
 
+	<servlet>
+		<servlet-name>disServlet</servlet-name>
+		<servlet-class>com.js.v1.DispatchServlet</servlet-class>
+		<init-param>
+			<param-name>application</param-name>
+			<param-value>application.properties</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>disServlet</servlet-name>
+		<url-pattern>/*</url-pattern>
+	</servlet-mapping>
+
+
 </web-app>
