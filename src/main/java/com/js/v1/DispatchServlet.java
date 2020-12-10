@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * @author name
@@ -47,7 +48,7 @@ public class DispatchServlet extends HttpServlet {
 
         Optional<ServletConfig> sco = Optional.ofNullable(config);
 //        1. 加载配置文件
-        loadConfiguration(sco.orElseThrow().getInitParameter("application"));
+        loadConfiguration(sco.orElseThrow(this::ThrowRunTime).getInitParameter("application"));
 //        2. 扫描相关的类
         classScann(contextConfig.getProperty("classSrc"));
 //        3. 初始化 IOC 容器
@@ -75,55 +76,64 @@ public class DispatchServlet extends HttpServlet {
 
     }
 
+    public RuntimeException ThrowRunTime() {
+
+        return new RuntimeException(" you're can't play with mySpring .Because you didn't have any config file  ");
+    }
+
     private void instance() {
         Optional<List<String>> cnos = Optional.ofNullable(this.classNames);
 
-
-        cnos.ifPresent(e -> e.forEach(
-                element -> {
-                    try {
-                        Class<?> aClass = Class.forName(element);
-                        Optional<? extends Class<?>> classOptional = Optional.ofNullable(aClass);
-//                        此处判断  不控制没有 注解的 对象
-                        classOptional = classOptional.filter(
-                                eClass -> {
-
-                                    return eClass.isAnnotationPresent(MyController.class)
-                                            ||
-                                            eClass.isAnnotationPresent(MyService.class);
-                                }
-                        );
-                        classOptional.ifPresent(eClass -> {
-
-                            /**
-                             * TODO 现有状况
-                             * 1. 两个实现类 类名相同分别属于 不同包 根据默认类名 首字母小写为KEY 肯定
-                             * 覆盖一个
-                             * 2. 注入时 接口下有 多个实现类 此时不知道用谁
-                             */
-                            if(eClass.isAnnotationPresent(MyService.class)){
-
-                            }
-
-                            Object o = null;
-                            try {
-                                o = eClass.getConstructor().newInstance();
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
-                            }
-                            String simpleName = aClass.getSimpleName();
-                            IoC.put(toLowerFirstCase(simpleName).toLowerCase(), o);
-                        });
-
-
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                }
-        ));
-
+        cnos.ifPresent(this::getListConsumer);
 
     }
+
+    private void getListConsumer(List<String> names) {
+
+        names.forEach(this::HandlerObjCreate);
+    }
+
+    private void HandlerObjCreate(String element) {
+        try {
+            Class<?> aClass = Class.forName(element);
+            Optional<? extends Class<?>> classOptional = Optional.ofNullable(aClass);
+//                        此处判断  不控制没有 注解的 对象
+            classOptional = classOptional.filter(
+                    eClass -> {
+
+                        return eClass.isAnnotationPresent(MyController.class)
+                                ||
+                                eClass.isAnnotationPresent(MyService.class);
+                    }
+            );
+            classOptional.ifPresent(eClass -> {
+
+                /**
+                 * TODO 现有状况
+                 * 1. 两个实现类 类名相同分别属于 不同包 根据默认类名 首字母小写为KEY 肯定
+                 * 覆盖一个
+                 * 2. 注入时 接口下有 多个实现类 此时不知道用谁
+                 */
+                if (eClass.isAnnotationPresent(MyService.class)) {
+
+                }
+
+                Object o = null;
+                try {
+                    o = eClass.getConstructor().newInstance();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                String simpleName = aClass.getSimpleName();
+                IoC.put(toLowerFirstCase(simpleName).toLowerCase(), o);
+            });
+
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
 
     private String toLowerFirstCase(String simpleName) {
         char[] chars = simpleName.toCharArray();
