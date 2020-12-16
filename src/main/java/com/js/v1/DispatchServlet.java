@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.net.URL;
 import java.util.*;
 
@@ -85,25 +86,22 @@ public class DispatchServlet extends HttpServlet {
                         Class<?> aClass = Class.forName(element);
                         Optional<? extends Class<?>> classOptional = Optional.ofNullable(aClass);
 //                        此处判断  不控制没有 注解的 对象
-                        classOptional = classOptional.filter(
+                        classOptional.filter(
                                 eClass -> {
 
                                     return eClass.isAnnotationPresent(MyController.class)
                                             ||
                                             eClass.isAnnotationPresent(MyService.class);
                                 }
-                        );
-                        classOptional.ifPresent(eClass -> {
+                        ).ifPresent(eClass -> {
+                            String simpleName = aClass.getSimpleName();
 
-                            /**
-                             * TODO 现有状况
-                             * 1. 两个实现类 类名相同分别属于 不同包 根据默认类名 首字母小写为KEY 肯定
-                             * 覆盖一个
-                             * 2. 注入时 接口下有 多个实现类 此时不知道用谁
-                             */
-                            if(eClass.isAnnotationPresent(MyService.class)){
-
+                            /* 用户在注解上自定义 value Name 以用户定义为主*/
+                            String userDefinedValue = eClass.getAnnotation(MyService.class).value();
+                            if (userDefinedValue.length() > 0) {
+                                simpleName = userDefinedValue.trim();
                             }
+
 
                             Object o = null;
                             try {
@@ -111,8 +109,22 @@ public class DispatchServlet extends HttpServlet {
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                             }
-                            String simpleName = aClass.getSimpleName();
-                            IoC.put(toLowerFirstCase(simpleName).toLowerCase(), o);
+                            simpleName = toLowerFirstCase(simpleName);
+                            IoC.put(simpleName, o);
+
+                            /* 情况 一个接口下面 有多个实现类, 判断
+                             * 其他实现类是否 自定义服务名称
+                             * */
+                            for (Class<?> anInterface : eClass.getInterfaces()) {
+//                                interface 类名 +上自定义名称 如果有重复证明当前 自定义名称有问题
+                                String key = anInterface.getName() + "." + simpleName.replace("\\.", ".").trim();
+                                if (IoC.containsKey(key)) {
+                                    throw new RuntimeException(" One interface One  ");
+                                }
+                                IoC.put(key, o);
+
+                            }
+
                         });
 
 
@@ -139,15 +151,15 @@ public class DispatchServlet extends HttpServlet {
 
         for (File listFile : file.listFiles()) {
 
-            if (file.isDirectory()) {
-                classScann(pagePath + "." + file.getName());
+            if (listFile.isDirectory()) {
+                classScann(pagePath + "." + listFile.getName());
             } else {
-                if (!file.getName().endsWith(".class")) {
+                if (!listFile.getName().endsWith(".class")) {
                     continue;
                 }
-                Optional<String> fName = Optional.ofNullable(file.getName());
+                Optional<String> fName = Optional.ofNullable(listFile.getName());
 //                只筛选 是以 class结尾的 ,如果非class 结尾 返回 null
-                fName = fName.filter(name -> file.getName().endsWith(".class"));
+                fName = fName.filter(name -> listFile.getName().endsWith(".class"));
 //                如果 fName 不为 null
                 fName.ifPresent(name -> {
                     //          替换掉class

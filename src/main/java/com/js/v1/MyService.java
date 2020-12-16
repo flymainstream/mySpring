@@ -1,10 +1,17 @@
 package com.js.v1;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
+
 /**
  * @author name
  * @date 2020/12/9
  * @dateTime 22:49
  * @description:
  */
+@Target({ElementType.METHOD, ElementType.TYPE})
 public @interface MyService {
+     String value();
+
+
 }
