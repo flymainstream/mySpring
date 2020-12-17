@@ -8,8 +8,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
 
@@ -29,6 +30,8 @@ public class DispatchServlet extends HttpServlet {
     private Map<String, Object> IoC = new HashMap<>(24);
 
 
+    private Map<String, Object> handlerMapping = new HashMap<>(24);
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         super.doPost(req, resp);
@@ -37,10 +40,34 @@ public class DispatchServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 //      委派method  返回response
-        dispatch(req, resp);
+        try {
+            dispatch(req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    private void dispatch(HttpServletRequest req, HttpServletResponse resp) {
+    private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws InvocationTargetException, IllegalAccessException {
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        String key = url.replaceAll(contextPath, "").replaceAll("/+", "/");
+
+        if (!this.handlerMapping.containsKey(key)) {
+            try {
+                resp.getWriter().write(" 404 Not Found !!! ");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        Map<String, String[]> parameterMap = req.getParameterMap();
+        Method method = (Method) this.handlerMapping.get(key);
+
+        String name = method.getDeclaringClass().getSimpleName();
+        Object o = IoC.get(toLowerFirstCase(name));
+
+        method.invoke(o, new Object[]{
+                req, resp, parameterMap.get("name")[0]
+        });
     }
 
 
@@ -70,19 +97,56 @@ public class DispatchServlet extends HttpServlet {
     private void handlerMapping() {
 
 
+        if (IoC.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, Object> entry : IoC.entrySet()) {
+            Class<?> aClass = entry.getValue().getClass();
+            if (!aClass.isAnnotationPresent(MyController.class)) {
+                continue;
+            }
+            String classUrl = aClass.getAnnotation(MyController.class).value();
+
+
+            for (Method method : aClass.getMethods()) {
+
+                String methodUrl = method.getAnnotation(MyRequestMapping.class).value();
+
+                String key;
+
+
+                key = classUrl + "/" + methodUrl.replaceAll("/+", "/");
+
+                handlerMapping.put(key, method);
+            }
+
+
+        }
     }
 
-    private void autoWired()   {
+    private void autoWired() {
 
         for (Map.Entry<String, Object> entry : IoC.entrySet()) {
 
             Class<?> aClass = entry.getValue().getClass();
-            for (Field field : aClass.getFields()) {
+            for (Field field : aClass.getDeclaredFields()) {
                 if (!field.isAnnotationPresent(MyAutoWired.class)) {
                     continue;
                 }
+                String name;
 
-                String name = toLowerFirstCase(field.getClass().getSimpleName());
+                String value = field.getAnnotation(MyQualifier.class).value();
+                if (value.trim().length() > 0) {
+                    name = value.trim();
+                } else {
+                    /* 获得当前字段 的 类型 获得 类全名 , 默认通过类全名进行获取
+                     * 需要注入的对象
+                     * */
+                    name = toLowerFirstCase(field.getType().getName());
+
+                }
+                field.setAccessible(true);
                 try {
                     field.set(entry.getValue(), IoC.get(name));
                 } catch (IllegalAccessException e) {
@@ -101,50 +165,61 @@ public class DispatchServlet extends HttpServlet {
         cnos.ifPresent(this::getListConsumer);
 
     }
+
     private void getListConsumer(List<String> names) {
 
         names.forEach(this::handlerObjCreate);
     }
+
     private void handlerObjCreate(String element) {
 
-                    try {
-                        Class<?> aClass = Class.forName(element);
-                        Optional<? extends Class<?>> classOptional = Optional.ofNullable(aClass);
+        try {
+            Class<?> aClass = Class.forName(element);
+            Optional<? extends Class<?>> classOptional = Optional.ofNullable(aClass);
 //                        此处判断  不控制没有 注解的 对象
-                        classOptional = classOptional.filter(
-                                eClass -> {
+            classOptional.filter(
+                    eClass -> {
 
-                                    return eClass.isAnnotationPresent(MyController.class)
-                                            ||
-                                            eClass.isAnnotationPresent(MyService.class);
-                                }
-                        );
-                        classOptional.ifPresent(eClass -> {
-
-                            /**
-                             * TODO 现有状况
-                             * 1. 两个实现类 类名相同分别属于 不同包 根据默认类名 首字母小写为KEY 肯定
-                             * 覆盖一个
-                             * 2. 注入时 接口下有 多个实现类 此时不知道用谁
-                             */
-                            if(eClass.isAnnotationPresent(MyService.class)){
-
-                            }
-
-                            Object o = null;
-                            try {
-                                o = eClass.getConstructor().newInstance();
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
-                            }
-                            String simpleName = aClass.getSimpleName();
-                            IoC.put(toLowerFirstCase(simpleName).toLowerCase(), o);
-                        });
-
-
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
+                        return eClass.isAnnotationPresent(MyController.class)
+                                ||
+                                eClass.isAnnotationPresent(MyService.class);
                     }
+            ).ifPresent(eClass -> {
+                String simpleName = aClass.getSimpleName();
+
+                /* 用户在注解上自定义 value Name 以用户定义为主*/
+                String userDefinedValue = eClass.getAnnotation(MyService.class).value();
+                if (userDefinedValue.length() > 0) {
+                    simpleName = userDefinedValue.trim();
+                }
+
+                Object o = null;
+                try {
+                    o = eClass.getConstructor().newInstance();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                simpleName = toLowerFirstCase(simpleName);
+                IoC.put(simpleName, o);
+
+                /* 情况 一个接口下面 有多个实现类, 判断
+                 * 其他实现类是否 自定义服务名称
+                 * */
+                for (Class<?> anInterface : eClass.getInterfaces()) {
+//                                interface 类名 +上自定义名称 如果有重复证明当前 自定义名称有问题
+                    String key = anInterface.getName();
+                    if (IoC.containsKey(key)) {
+                        throw new RuntimeException(" One interface One  ");
+                    }
+                    IoC.put(key, o);
+
+                }
+            });
+
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
 
 
     }
@@ -163,13 +238,13 @@ public class DispatchServlet extends HttpServlet {
 
         for (File listFile : file.listFiles()) {
 
-            if (file.isDirectory()) {
-                classScann(pagePath + "." + file.getName());
+            if (listFile.isDirectory()) {
+                classScann(pagePath + "." + listFile.getName());
             } else {
-                if (!file.getName().endsWith(".class")) {
+                if (!listFile.getName().endsWith(".class")) {
                     continue;
                 }
-                Optional<String> fName = Optional.ofNullable(file.getName());
+                Optional<String> fName = Optional.ofNullable(listFile.getName());
 //                只筛选 是以 class结尾的 ,如果非class 结尾 返回 null
                 fName = fName.filter(name -> file.getName().endsWith(".class"));
 //                如果 fName 不为 null
@@ -210,5 +285,8 @@ public class DispatchServlet extends HttpServlet {
         }
     }
 
+    public RuntimeException ThrowRunTime() {
 
+        return new RuntimeException(" you're can't play with mySpring .Because you didn't have any config file  ");
+    }
 }
