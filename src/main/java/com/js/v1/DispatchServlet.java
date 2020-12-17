@@ -8,9 +8,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.*;
-import java.util.function.Consumer;
 
 /**
  * @author name
@@ -71,7 +71,22 @@ public class DispatchServlet extends HttpServlet {
 
     }
 
-    private void autoWired() {
+    private void autoWired() throws IllegalAccessException {
+
+        for (Map.Entry<String, Object> entry : IoC.entrySet()) {
+
+            Class<?> aClass = entry.getValue().getClass();
+            for (Field field : aClass.getFields()) {
+                if (!field.isAnnotationPresent(MyAutoWired.class)) {
+                    continue;
+                }
+
+                String name = toLowerFirstCase(field.getClass().getSimpleName());
+                field.set(entry.getValue(), IoC.get(name));
+            }
+
+
+        }
 
 
     }
@@ -90,10 +105,10 @@ public class DispatchServlet extends HttpServlet {
 
     private void getListConsumer(List<String> names) {
 
-        names.forEach(this::HandlerObjCreate);
+        names.forEach(this::handlerObjCreate);
     }
 
-    private void HandlerObjCreate(String element) {
+    private void handlerObjCreate(String element) {
         try {
             Class<?> aClass = Class.forName(element);
             Optional<? extends Class<?>> classOptional = Optional.ofNullable(aClass);
