@@ -71,7 +71,7 @@ public class DispatchServlet extends HttpServlet {
 
     }
 
-    private void autoWired() throws IllegalAccessException {
+    private void autoWired()   {
 
         for (Map.Entry<String, Object> entry : IoC.entrySet()) {
 
@@ -82,7 +82,11 @@ public class DispatchServlet extends HttpServlet {
                 }
 
                 String name = toLowerFirstCase(field.getClass().getSimpleName());
-                field.set(entry.getValue(), IoC.get(name));
+                try {
+                    field.set(entry.getValue(), IoC.get(name));
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
             }
 
 
