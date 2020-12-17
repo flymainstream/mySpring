@@ -9,9 +9,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.*;
-import java.util.function.Consumer;
 
 /**
  * @author name
@@ -49,7 +49,7 @@ public class DispatchServlet extends HttpServlet {
 
         Optional<ServletConfig> sco = Optional.ofNullable(config);
 //        1. 加载配置文件
-        loadConfiguration(sco.orElseThrow().getInitParameter("application"));
+        loadConfiguration(sco.orElseThrow(this::ThrowRunTime).getInitParameter("application"));
 //        2. 扫描相关的类
         classScann(contextConfig.getProperty("classSrc"));
 //        3. 初始化 IOC 容器
@@ -72,17 +72,41 @@ public class DispatchServlet extends HttpServlet {
 
     }
 
-    private void autoWired() {
+    private void autoWired()   {
+
+        for (Map.Entry<String, Object> entry : IoC.entrySet()) {
+
+            Class<?> aClass = entry.getValue().getClass();
+            for (Field field : aClass.getFields()) {
+                if (!field.isAnnotationPresent(MyAutoWired.class)) {
+                    continue;
+                }
+
+                String name = toLowerFirstCase(field.getClass().getSimpleName());
+                try {
+                    field.set(entry.getValue(), IoC.get(name));
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+
+
+        }
 
 
     }
 
     private void instance() {
         Optional<List<String>> cnos = Optional.ofNullable(this.classNames);
+        cnos.ifPresent(this::getListConsumer);
 
+    }
+    private void getListConsumer(List<String> names) {
 
-        cnos.ifPresent(e -> e.forEach(
-                element -> {
+        names.forEach(this::handlerObjCreate);
+    }
+    private void handlerObjCreate(String element) {
+
                     try {
                         Class<?> aClass = Class.forName(element);
                         Optional<? extends Class<?>> classOptional = Optional.ofNullable(aClass);
@@ -121,8 +145,6 @@ public class DispatchServlet extends HttpServlet {
                     } catch (Exception ex) {
                         ex.printStackTrace();
                     }
-                }
-        ));
 
 
     }
