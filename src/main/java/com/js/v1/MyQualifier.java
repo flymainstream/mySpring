@@ -1,11 +1,18 @@
 package com.js.v1;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
  * @author name
  * @date 2020/12/17
  * @dateTime 21:35
  * @description:
  */
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
 public @interface MyQualifier {
-    String value();
+    String value() default "";
 }

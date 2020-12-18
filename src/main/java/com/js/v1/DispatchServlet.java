@@ -27,14 +27,14 @@ public class DispatchServlet extends HttpServlet {
 
     private List<String> classNames = new ArrayList<String>(24);
     //    key 是类名首字母小写, key 是new的对象
-    private Map<String, Object> IoC = new HashMap<>(24);
+    private Map<String, Object> ioC = new HashMap<>(24);
 
 
     private Map<String, Object> handlerMapping = new HashMap<>(24);
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req, resp);
+        this.doPost(req, resp);
     }
 
     @Override
@@ -55,6 +55,7 @@ public class DispatchServlet extends HttpServlet {
         if (!this.handlerMapping.containsKey(key)) {
             try {
                 resp.getWriter().write(" 404 Not Found !!! ");
+                return;
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -62,8 +63,8 @@ public class DispatchServlet extends HttpServlet {
         Map<String, String[]> parameterMap = req.getParameterMap();
         Method method = (Method) this.handlerMapping.get(key);
 
-        String name = method.getDeclaringClass().getSimpleName();
-        Object o = IoC.get(toLowerFirstCase(name));
+        String name = toLowerFirstCase(method.getDeclaringClass().getSimpleName());
+        Object o = ioC.get(name);
 
         method.invoke(o, new Object[]{
                 req, resp, parameterMap.get("name")[0]
@@ -78,7 +79,7 @@ public class DispatchServlet extends HttpServlet {
 //        1. 加载配置文件
         loadConfiguration(sco.orElseThrow(this::ThrowRunTime).getInitParameter("application"));
 //        2. 扫描相关的类
-        classScann(contextConfig.getProperty("classSrc"));
+        classScanning(contextConfig.getProperty("classSrc"));
 //        3. 初始化 IOC 容器
         instance();
 //        ================== AOP ===============
@@ -91,17 +92,17 @@ public class DispatchServlet extends HttpServlet {
 //        5. 分发依赖 反射调用
         handlerMapping();
 
-        System.out.println(" finsh init My Spring ");
+        System.out.println(" finish init My Spring ");
     }
 
     private void handlerMapping() {
 
 
-        if (IoC.isEmpty()) {
+        if (ioC.isEmpty()) {
             return;
         }
 
-        for (Map.Entry<String, Object> entry : IoC.entrySet()) {
+        for (Map.Entry<String, Object> entry : ioC.entrySet()) {
             Class<?> aClass = entry.getValue().getClass();
             if (!aClass.isAnnotationPresent(MyController.class)) {
                 continue;
@@ -110,13 +111,13 @@ public class DispatchServlet extends HttpServlet {
 
 
             for (Method method : aClass.getMethods()) {
-
+                if (method.getAnnotation(MyRequestMapping.class) == null) {
+                    continue;
+                }
                 String methodUrl = method.getAnnotation(MyRequestMapping.class).value();
 
-                String key;
 
-
-                key = classUrl + "/" + methodUrl.replaceAll("/+", "/");
+                String key = (classUrl + "/" + methodUrl).replaceAll("/+", "/");
 
                 handlerMapping.put(key, method);
             }
@@ -127,7 +128,7 @@ public class DispatchServlet extends HttpServlet {
 
     private void autoWired() {
 
-        for (Map.Entry<String, Object> entry : IoC.entrySet()) {
+        for (Map.Entry<String, Object> entry : ioC.entrySet()) {
 
             Class<?> aClass = entry.getValue().getClass();
             for (Field field : aClass.getDeclaredFields()) {
@@ -136,19 +137,25 @@ public class DispatchServlet extends HttpServlet {
                 }
                 String name;
 
-                String value = field.getAnnotation(MyQualifier.class).value();
-                if (value.trim().length() > 0) {
-                    name = value.trim();
+
+                String value = "";
+                if (
+                        field.getAnnotation(MyQualifier.class) != null
+                                &&
+
+                                setMyQualifierValue(field, value).length() > 0
+                ) {
+                    name = value;
                 } else {
                     /* 获得当前字段 的 类型 获得 类全名 , 默认通过类全名进行获取
                      * 需要注入的对象
                      * */
-                    name = toLowerFirstCase(field.getType().getName());
+                    name = toLowerFirstCase(field.getType().getSimpleName());
 
                 }
                 field.setAccessible(true);
                 try {
-                    field.set(entry.getValue(), IoC.get(name));
+                    field.set(entry.getValue(), ioC.get(name));
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
                 }
@@ -160,6 +167,11 @@ public class DispatchServlet extends HttpServlet {
 
     }
 
+    private String setMyQualifierValue(Field field, String value) {
+        value = field.getAnnotation(MyQualifier.class).value().trim();
+        return value;
+    }
+
     private void instance() {
         Optional<List<String>> cnos = Optional.ofNullable(this.classNames);
         cnos.ifPresent(this::getListConsumer);
@@ -168,7 +180,16 @@ public class DispatchServlet extends HttpServlet {
 
     private void getListConsumer(List<String> names) {
 
+
         names.forEach(this::handlerObjCreate);
+    }
+
+    private void loadClass(String element) {
+        try {
+            Class.forName(element);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     private void handlerObjCreate(String element) {
@@ -178,19 +199,19 @@ public class DispatchServlet extends HttpServlet {
             Optional<? extends Class<?>> classOptional = Optional.ofNullable(aClass);
 //                        此处判断  不控制没有 注解的 对象
             classOptional.filter(
-                    eClass -> {
+                    eClass ->
+                            eClass.isAnnotationPresent(MyController.class)
+                                    ||
+                                    eClass.isAnnotationPresent(MyService.class)
 
-                        return eClass.isAnnotationPresent(MyController.class)
-                                ||
-                                eClass.isAnnotationPresent(MyService.class);
-                    }
             ).ifPresent(eClass -> {
                 String simpleName = aClass.getSimpleName();
 
-                /* 用户在注解上自定义 value Name 以用户定义为主*/
-                String userDefinedValue = eClass.getAnnotation(MyService.class).value();
-                if (userDefinedValue.length() > 0) {
-                    simpleName = userDefinedValue.trim();
+                /* Service处理 用户在注解上自定义 value Name 以用户定义为主*/
+                if (eClass.getAnnotation(MyService.class) != null
+                        &&
+                        eClass.getAnnotation(MyService.class).value().length() > 0) {
+                    simpleName = eClass.getAnnotation(MyService.class).value().trim();
                 }
 
                 Object o = null;
@@ -200,7 +221,7 @@ public class DispatchServlet extends HttpServlet {
                     ex.printStackTrace();
                 }
                 simpleName = toLowerFirstCase(simpleName);
-                IoC.put(simpleName, o);
+                ioC.put(simpleName, o);
 
                 /* 情况 一个接口下面 有多个实现类, 判断
                  * 其他实现类是否 自定义服务名称
@@ -208,10 +229,10 @@ public class DispatchServlet extends HttpServlet {
                 for (Class<?> anInterface : eClass.getInterfaces()) {
 //                                interface 类名 +上自定义名称 如果有重复证明当前 自定义名称有问题
                     String key = anInterface.getName();
-                    if (IoC.containsKey(key)) {
+                    if (ioC.containsKey(key)) {
                         throw new RuntimeException(" One interface One  ");
                     }
-                    IoC.put(key, o);
+                    ioC.put(key, o);
 
                 }
             });
@@ -230,7 +251,7 @@ public class DispatchServlet extends HttpServlet {
         return String.valueOf(chars);
     }
 
-    private void classScann(String pagePath) {
+    private void classScanning(String pagePath) {
 
         URL resource = this.getClass().getClassLoader().getResource("/" + pagePath.replaceAll("\\.", "/"));
 
@@ -239,20 +260,21 @@ public class DispatchServlet extends HttpServlet {
         for (File listFile : file.listFiles()) {
 
             if (listFile.isDirectory()) {
-                classScann(pagePath + "." + listFile.getName());
+                classScanning(pagePath + "." + listFile.getName());
             } else {
-                if (!listFile.getName().endsWith(".class")) {
-                    continue;
-                }
-                Optional<String> fName = Optional.ofNullable(listFile.getName());
+//                        为null报错
+                Optional<String> fName = Optional.of(listFile.getName());
 //                只筛选 是以 class结尾的 ,如果非class 结尾 返回 null
-                fName = fName.filter(name -> file.getName().endsWith(".class"));
-//                如果 fName 不为 null
-                fName.ifPresent(name -> {
-                    //          替换掉class
-                    String className = pagePath + "." + name.replace(".class", "");
-                    classNames.add(className);
-                });
+                fName
+//                        判断是否 以 .class 皆为
+                        .filter(name ->
+//                                此处返回false 那么 filter 将会返回 null
+                                name.endsWith(".class"))
+                        .ifPresent(name -> {
+                            //          替换掉class
+                            String className = pagePath + "." + name.replace(".class", "");
+                            classNames.add(className);
+                        });
 
 
             }
