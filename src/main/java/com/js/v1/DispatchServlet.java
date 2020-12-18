@@ -48,11 +48,9 @@ public class DispatchServlet extends HttpServlet {
     }
 
     private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws InvocationTargetException, IllegalAccessException {
-        String url = req.getRequestURI();
-        String contextPath = req.getContextPath();
-        String key = url.replaceAll(contextPath, "").replaceAll("/+", "/");
+        String url = getUrl(req);
 
-        if (!this.handlerMapping.containsKey(key)) {
+        if (!this.handlerMapping.containsKey(url)) {
             try {
                 resp.getWriter().write(" 404 Not Found !!! ");
                 return;
@@ -61,7 +59,7 @@ public class DispatchServlet extends HttpServlet {
             }
         }
         Map<String, String[]> parameterMap = req.getParameterMap();
-        Method method = (Method) this.handlerMapping.get(key);
+        Method method = (Method) this.handlerMapping.get(url);
 
         String name = toLowerFirstCase(method.getDeclaringClass().getSimpleName());
         Object o = ioC.get(name);
@@ -69,6 +67,12 @@ public class DispatchServlet extends HttpServlet {
         method.invoke(o, new Object[]{
                 req, resp, parameterMap.get("name")[0]
         });
+    }
+
+    private String getUrl(HttpServletRequest req) {
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        return url.replaceAll(contextPath, "").replaceAll("/+", "/");
     }
 
 
@@ -96,74 +100,75 @@ public class DispatchServlet extends HttpServlet {
     }
 
     private void handlerMapping() {
-
-
         if (ioC.isEmpty()) {
             return;
         }
+        ioC.entrySet().forEach(this::doHandlerMapping);
 
-        for (Map.Entry<String, Object> entry : ioC.entrySet()) {
-            Class<?> aClass = entry.getValue().getClass();
-            if (!aClass.isAnnotationPresent(MyController.class)) {
+
+    }
+
+    private void doHandlerMapping(Map.Entry<String, Object> entry) {
+        Class<?> aClass = entry.getValue().getClass();
+        if (!aClass.isAnnotationPresent(MyController.class)) {
+            return;
+        }
+        String classUrl = aClass.getAnnotation(MyController.class).value();
+
+        /*
+         * 只处理 public 和 有 MyRequestMapping 注解的
+         * */
+        for (Method method : aClass.getMethods()) {
+            MyRequestMapping myRequestMapping = method.getAnnotation(MyRequestMapping.class);
+            if (myRequestMapping == null) {
                 continue;
             }
-            String classUrl = aClass.getAnnotation(MyController.class).value();
-
-
-            for (Method method : aClass.getMethods()) {
-                if (method.getAnnotation(MyRequestMapping.class) == null) {
-                    continue;
-                }
-                String methodUrl = method.getAnnotation(MyRequestMapping.class).value();
-
-
-                String key = (classUrl + "/" + methodUrl).replaceAll("/+", "/");
-
-                handlerMapping.put(key, method);
-            }
-
-
+            String methodUrl = myRequestMapping.value();
+            String key = (classUrl + "/" + methodUrl).replaceAll("/+", "/");
+            handlerMapping.put(key, method);
         }
+
+
     }
 
     private void autoWired() {
-
-        for (Map.Entry<String, Object> entry : ioC.entrySet()) {
-
-            Class<?> aClass = entry.getValue().getClass();
-            for (Field field : aClass.getDeclaredFields()) {
-                if (!field.isAnnotationPresent(MyAutoWired.class)) {
-                    continue;
-                }
-                String name;
-
-
-                String value = "";
-                if (
-                        field.getAnnotation(MyQualifier.class) != null
-                                &&
-
-                                setMyQualifierValue(field, value).length() > 0
-                ) {
-                    name = value;
-                } else {
-                    /* 获得当前字段 的 类型 获得 类全名 , 默认通过类全名进行获取
-                     * 需要注入的对象
-                     * */
-                    name = toLowerFirstCase(field.getType().getSimpleName());
-
-                }
-                field.setAccessible(true);
-                try {
-                    field.set(entry.getValue(), ioC.get(name));
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                }
-            }
-
-
+        if (ioC == null || ioC.size() < 1) {
+            return;
         }
+        ioC.entrySet().forEach(this::handlerField);
 
+    }
+
+    private void handlerField(Map.Entry<String, Object> entry) {
+        Class<?> aClass = entry.getValue().getClass();
+
+        for (Field field : aClass.getDeclaredFields()) {
+            if (!field.isAnnotationPresent(MyAutoWired.class)) {
+                continue;
+            }
+            String name;
+            String value = "";
+            if (
+                    field.getAnnotation(MyQualifier.class) != null
+                            &&
+
+                            setMyQualifierValue(field, value).length() > 0
+            ) {
+                name = value;
+            } else {
+                /* 获得当前字段 的 类型 获得 类全名 , 默认通过类全名进行获取
+                 * 需要注入的对象
+                 * */
+                name = toLowerFirstCase(field.getType().getSimpleName());
+
+            }
+            field.setAccessible(true);
+            try {
+                field.set(entry.getValue(), ioC.get(name));
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
 
     }
 
