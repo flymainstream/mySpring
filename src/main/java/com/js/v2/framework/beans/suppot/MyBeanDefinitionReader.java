@@ -28,11 +28,53 @@ public class MyBeanDefinitionReader {
     public MyBeanDefinitionReader(String[] configLocations) {
 //        this.configLocations = configLocations;
         this.loadConfiguration(configLocations[0]);
-
+        this.classScanning(contextConfig.getProperty("classSrc"));
     }
 
     public MyBeanDefinition loadBeanDefinition() {
+
+        List<MyBeanDefinition> myBeanDefinitions = new ArrayList<>();
+        registerBeanNames.forEach(className -> {
+            try {
+                Class<?> beanClass = Class.forName(className);
+                //                1. 默认首字母小写
+                MyBeanDefinition myBeanDefinition = getMyBeanDefinition(
+                        toLowerFirstCase(beanClass.getSimpleName())
+                        , beanClass.getName());
+
+//                2. 自定义
+
+                myBeanDefinitions.add(myBeanDefinition);
+//                3. 接口注入
+                for (Class<?> anInterface : beanClass.getInterfaces()) {
+
+                    myBeanDefinitions.add(getMyBeanDefinition(
+                            toLowerFirstCase(anInterface.getName())
+                            , beanClass.getName()));
+                }
+
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        });
         return null;
+    }
+
+    private MyBeanDefinition getMyBeanDefinition(String beanName, String className) {
+        MyBeanDefinition myBeanDefinition = new MyBeanDefinition();
+//               保存className
+        myBeanDefinition.setBeanClassName(className);
+
+//                保存BeanName
+
+        myBeanDefinition.setFactoryBeanName(beanName);
+        return myBeanDefinition;
+    }
+
+    private String toLowerFirstCase(String simpleName) {
+        char[] chars = simpleName.toCharArray();
+        chars[0] += 32;
+        return String.valueOf(chars);
     }
 
     private void classScanning(String pagePath) {
