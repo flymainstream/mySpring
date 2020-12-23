@@ -9,7 +9,8 @@
 		<servlet-class>com.js.v1.DispatchServlet</servlet-class>
 		<init-param>
 			<param-name>application</param-name>
-			<param-value>v1/application.properties</param-value>
+<!--			<param-value>v1/application.properties</param-value>-->
+			<param-value>classpath:/v2/application.properties</param-value>
 		</init-param>
 		<load-on-startup>1</load-on-startup>
 	</servlet>
