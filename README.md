@@ -1,2 +1,4 @@
 # mySpring
-made of Jim , the  project use to learn Spring code 
+made of Jim , the  project use to learn Spring code
+
+v1 url  : http://localhost:8080/spring_war/dome?name=jim 
