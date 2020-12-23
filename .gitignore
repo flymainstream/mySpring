@@ -1,4 +1,5 @@
 # 忽略.idea文件夹及文件夹下文件
 .idea
+target
 *.iml
 *.class
