@@ -13,6 +13,7 @@ import java.lang.annotation.Target;
  */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface MyController {
+@MyComponent
+public @interface MyController  {
     String value() default "";
 }
