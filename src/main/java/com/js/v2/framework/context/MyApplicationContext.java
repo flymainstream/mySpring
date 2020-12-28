@@ -9,10 +9,7 @@ import com.js.v2.framework.beans.config.MyBeanWrapper;
 import com.js.v2.framework.beans.suppot.MyBeanDefinitionReader;
 
 import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author 刘锦涛
@@ -89,8 +86,6 @@ public class MyApplicationContext {
     }
 
     /**
-     *
-     *
      * @param beanName
      * @param beanDefinition
      * @param beanWrapper
@@ -132,10 +127,20 @@ public class MyApplicationContext {
 
     }
 
-
+    /**
+     * 真正创建对象
+     *
+     * @param beanName
+     * @param beanDefinition
+     * @return
+     */
     private Object instantiateBean(String beanName, MyBeanDefinition beanDefinition) {
         String className = beanDefinition.getBeanClassName();
         Object instance = null;
+//        将代码变成单例
+        if (this.factoryBeanCache.containsKey(beanName)) {
+            return this.factoryBeanCache.get(beanName);
+        }
         try {
             Class<?> aClass = Class.forName(className);
 
@@ -162,4 +167,18 @@ public class MyApplicationContext {
         return this.getBean(clazz.getName());
     }
 
+    /**
+     * 获得Ioc里面有多少个bean
+     *
+     * @return
+     */
+    public int getBeanDefinitionCounts() {
+
+        return this.beanDefinitionMap.size();
+    }
+
+    public Set<String> getBeanDefinitionNames() {
+
+        return this.beanDefinitionMap.keySet();
+    }
 }
