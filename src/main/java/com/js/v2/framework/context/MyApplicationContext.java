@@ -58,7 +58,7 @@ public class MyApplicationContext {
         myBeanDefinitions.forEach(beanDefinition -> {
 
             String factoryName = beanDefinition.getFactoryBeanName();
-            String className = beanDefinition.getClassName();
+            String className = beanDefinition.getBeanClassName();
             if (beanDefinitionMap.containsKey(factoryName)) {
                 throw new RuntimeException(" factory name already  exist");
             }
@@ -134,7 +134,7 @@ public class MyApplicationContext {
 
 
     private Object instantiateBean(String beanName, MyBeanDefinition beanDefinition) {
-        String className = beanDefinition.getClassName();
+        String className = beanDefinition.getBeanClassName();
         Object instance = null;
         try {
             Class<?> aClass = Class.forName(className);
