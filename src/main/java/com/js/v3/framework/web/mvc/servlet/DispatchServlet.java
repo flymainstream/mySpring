@@ -1,6 +1,7 @@
-package com.js.v2.framework.web.mvc.servlet;
+package com.js.v3.framework.web.mvc.servlet;
 
-import com.js.v1.*;
+import com.js.v1.MyController;
+import com.js.v1.MyRequestMapping;
 import com.js.v2.framework.context.MyApplicationContext;
 
 import javax.servlet.ServletConfig;
@@ -8,13 +9,9 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URL;
 import java.util.*;
 
 /**
@@ -28,9 +25,8 @@ public class DispatchServlet extends HttpServlet {
     private MyApplicationContext applicationContext;
 
 
-
-
     private Map<String, Object> handlerMapping = new HashMap<>(24);
+    private List<MyHandlerMapping> handlerMappings = new ArrayList<>(24);
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -48,18 +44,22 @@ public class DispatchServlet extends HttpServlet {
     }
 
     private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws InvocationTargetException, IllegalAccessException {
-        String url = getUrl(req);
 
-        if (!this.handlerMapping.containsKey(url)) {
+        if (this.handlerMappings.isEmpty()) {
+            return;
+        }
+        MyHandlerMapping handler = getMyHandlerMapping(req, resp);
+
+        if (handler == null) {
             try {
                 resp.getWriter().write(" 404 Not Found !!! ");
-                return;
+                return ;
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
         Map<String, String[]> parameterMap = req.getParameterMap();
-        Method method = (Method) this.handlerMapping.get(url);
+        Method method = (Method) handler.getMethod();
 
         String name = toLowerFirstCase(method.getDeclaringClass().getSimpleName());
         Object o = applicationContext.getBean(name);
@@ -67,6 +67,17 @@ public class DispatchServlet extends HttpServlet {
         method.invoke(o, new Object[]{
                 req, resp, parameterMap.get("name")[0]
         });
+    }
+
+    private MyHandlerMapping getMyHandlerMapping(HttpServletRequest req, HttpServletResponse resp) {
+        String url = getUrl(req);
+        for (MyHandlerMapping element : handlerMappings) {
+            if (element.getUrl().equals(url)) {
+                return element;
+
+            }
+        }
+        return null;
     }
 
     private String getUrl(HttpServletRequest req) {
@@ -89,13 +100,14 @@ public class DispatchServlet extends HttpServlet {
     }
 
     private void handlerMapping() {
-        if (applicationContext.getBeanDefinitionCounts()==0) {
+        if (applicationContext.getBeanDefinitionCounts() == 0) {
             return;
         }
         applicationContext.getBeanDefinitionNames().forEach(this::doHandlerMapping);
 
 
     }
+
     private void doHandlerMapping(String beanName) {
         Class<?> aClass = applicationContext.getBean(beanName).getClass();
         if (!aClass.isAnnotationPresent(MyController.class)) {
@@ -113,18 +125,11 @@ public class DispatchServlet extends HttpServlet {
             }
             String methodUrl = myRequestMapping.value();
             String key = (classUrl + "/" + methodUrl).replaceAll("/+", "/");
-            handlerMapping.put(key, method);
+            handlerMappings.add(new MyHandlerMapping(key, method, applicationContext.getBean(beanName)));
         }
 
 
     }
-
-
-
-
-
-
-
 
 
     private String toLowerFirstCase(String simpleName) {
@@ -132,7 +137,6 @@ public class DispatchServlet extends HttpServlet {
         chars[0] += 32;
         return String.valueOf(chars);
     }
-
 
 
     public RuntimeException ThrowRunTime() {
