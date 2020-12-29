@@ -21,17 +21,16 @@ import java.util.Properties;
  */
 public class MyBeanDefinitionReader {
 
-    private String[] configLocations;
+//    private String[] configLocations;
     private List<String> registerBeanNames = new ArrayList<String>(24);
     private Properties contextConfig = new Properties();
 
     public MyBeanDefinitionReader(String[] configLocations) {
-//        this.configLocations = configLocations;
         this.loadConfiguration(configLocations[0]);
         this.classScanning(contextConfig.getProperty("classSrc"));
     }
 
-    public MyBeanDefinition loadBeanDefinition() {
+    public List<MyBeanDefinition> loadBeanDefinition() {
 
         List<MyBeanDefinition> myBeanDefinitions = new ArrayList<>();
         registerBeanNames.forEach(className -> {
@@ -57,7 +56,7 @@ public class MyBeanDefinitionReader {
                 e.printStackTrace();
             }
         });
-        return null;
+        return myBeanDefinitions;
     }
 
     private MyBeanDefinition getMyBeanDefinition(String beanName, String className) {

@@ -1,6 +1,9 @@
 package com.js.v2.framework.web.mvc.servlet;
 
-import com.js.v1.*;
+import com.js.v2.business.DomeController;
+import com.js.v2.business.service.DomeService;
+import com.js.v2.framework.annotation.MyController;
+import com.js.v2.framework.annotation.MyRequestMapping;
 import com.js.v2.framework.context.MyApplicationContext;
 
 import javax.servlet.ServletConfig;
@@ -8,14 +11,12 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URL;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * @author name
@@ -121,6 +122,39 @@ public class DispatchServlet extends HttpServlet {
 
 
 
+    private void handlerMapping() {
+        if (applicationContext.getBeanDefinitionCounts()==0) {
+            return;
+        }
+        applicationContext.getBeanDefinitionNames().forEach(this::doHandlerMapping);
+
+
+    }
+
+
+    private void doHandlerMapping(String beanName) {
+        Object controller = applicationContext.getBean(beanName);
+        Class<?> aClass = controller.getClass();
+        if (!aClass.isAnnotationPresent(MyController.class)) {
+            return;
+        }
+        String classUrl = aClass.getAnnotation(MyController.class).value();
+
+        /*
+         * 只处理 public 和 有 MyRequestMapping 注解的
+         * */
+        for (Method method : aClass.getMethods()) {
+            MyRequestMapping myRequestMapping = method.getAnnotation(MyRequestMapping.class);
+            if (myRequestMapping == null) {
+                continue;
+            }
+            String methodUrl = myRequestMapping.value();
+            String key = (classUrl + "/" + methodUrl).replaceAll("/+", "/");
+            handlerMapping.put(key, method);
+        }
+
+
+    }
 
 
 
