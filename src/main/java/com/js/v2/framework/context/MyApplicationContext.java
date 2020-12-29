@@ -98,9 +98,6 @@ public class MyApplicationContext {
 
         Class<?> beanClass = beanWrapper.getWrapperClass();
 
-       /* if (!beanClass.isAnnotationPresent(MyComponent.class)) {
-            return;
-        }*/
 
        /* 在 get 属性的时候 未使用 getDeclaredFields 而是使用了 getFields */
         for (Field field : beanClass.getDeclaredFields()) {
@@ -140,7 +137,6 @@ public class MyApplicationContext {
         String className = beanDefinition.getBeanClassName();
         Object instance = null;
 //        将代码变成单例
-        /* 此处未return 备份的对象 */
         if (this.factoryBeanObjectCache.containsKey(beanName)) {
             return this.factoryBeanObjectCache.get(beanName);
         }
