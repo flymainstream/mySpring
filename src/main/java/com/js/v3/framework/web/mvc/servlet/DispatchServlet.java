@@ -48,25 +48,33 @@ public class DispatchServlet extends HttpServlet {
     private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws InvocationTargetException, IllegalAccessException {
 
 
+        /*1. 获得一个handlerMapping*/
         MyHandlerMapping handler = getMyHandlerMapping(req, resp);
 
         if (handler == null) {
             try {
-                resp.getWriter().write(" 404 Not Found !!! ");
-                return ;
-            } catch (IOException e) {
+//                resp.getWriter().write(" 404 Not Found !!! ");
+                processDispatchResult(req, resp, new MyModelAndView("404"));
+                return;
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-        Map<String, String[]> parameterMap = req.getParameterMap();
-        Method method = (Method) handler.getMethod();
+        /*2. 获得一个handlerAdapter*/
+        MyHandlerAdapter myHandlerAdapter = getMyHandlerAdapter(handler);
 
-        String name = toLowerFirstCase(method.getDeclaringClass().getSimpleName());
-        Object o = applicationContext.getBean(name);
+        /*3. 解析某个函数的形参和返回值之后 封装MyModeAndView返回*/
+        MyModelAndView modelAndView = myHandlerAdapter.handler(req, resp,handler);
+        /*4. 把 modelAndView 变成 ViewResolve*/
+        processDispatchResult(req,resp,modelAndView);
+    }
 
-        method.invoke(o, new Object[]{
-                req, resp, parameterMap.get("name")[0]
-        });
+    private MyHandlerAdapter getMyHandlerAdapter(MyHandlerMapping handlerMapping) {
+        return null;
+    }
+
+    private void processDispatchResult(HttpServletRequest req, HttpServletResponse resp, MyModelAndView myModelAndView)   {
+
     }
 
     private MyHandlerMapping getMyHandlerMapping(HttpServletRequest req, HttpServletResponse resp) {
@@ -128,7 +136,7 @@ public class DispatchServlet extends HttpServlet {
                 continue;
             }
             String methodUrl = myRequestMapping.value();
-            String regex = (classUrl + "/" + methodUrl).replace("\\*",".*").replaceAll("/+", "/");
+            String regex = (classUrl + "/" + methodUrl).replace("\\*", ".*").replaceAll("/+", "/");
 
             handlerMappings.add(new MyHandlerMapping(Pattern.compile(regex), method, applicationContext.getBean(beanName)));
         }
