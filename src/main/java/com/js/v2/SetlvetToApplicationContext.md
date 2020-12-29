@@ -1,5 +1,9 @@
 
 
+Spring IoC 
+DispatchServlet -->  BeanDefinitionReader --> ApplicationContext
+
+
 
 从 servlet 到 application 
 

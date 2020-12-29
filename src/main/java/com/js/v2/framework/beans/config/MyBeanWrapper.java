@@ -28,11 +28,5 @@ public class MyBeanWrapper {
         return wrapperClass;
     }
 
-    public void setWrapperClass(Class<?> wrapperClass) {
-        this.wrapperClass = wrapperClass;
-    }
 
-    public void setInstance(Object wrapperInstance) {
-        this.wrapperInstance = wrapperInstance;
-    }
 }

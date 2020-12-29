@@ -21,22 +21,26 @@ import java.util.*;
  */
 public class MyApplicationContext {
 
-    private String[] configLocations;
-
-    private Map<String, MyBeanDefinition> beanDefinitionMap;
     private MyBeanDefinitionReader beanDefinitionReader;
 
+    /**
+     * bean的定义 map
+     */
+    private Map<String, MyBeanDefinition> beanDefinitionMap = new HashMap<>(24);
+    /* bean的 包装增强map */
     private Map<String, MyBeanWrapper> factoryBeanCache = new HashMap<>(24);
+    /*  Bean的instance 备份*/
     private Map<String, Object> factoryBeanObjectCache = new HashMap<>(24);
+
 
     public MyApplicationContext(String... configLocations) {
 
 //        1. 加载配置文件
         this.beanDefinitionReader = new MyBeanDefinitionReader(configLocations);
 //        2. 解析配置文件 变成BeanDefinition
-        MyBeanDefinition myBeanDefinitions = beanDefinitionReader.loadBeanDefinition();
+        List<MyBeanDefinition> myBeanDefinitions = beanDefinitionReader.loadBeanDefinition();
 //        3. 缓存 BeanDefinition
-        registerBeanDefinition(Arrays.asList(myBeanDefinitions));
+        registerBeanDefinition(myBeanDefinitions);
 //        4. DI
         autoWired();
 
@@ -44,11 +48,7 @@ public class MyApplicationContext {
 
     private void autoWired() {
 
-        beanDefinitionMap.forEach((key, value) -> {
-
-            getBean(key, value);
-
-        });
+        beanDefinitionMap.forEach(this::getBean);
     }
 
     private void registerBeanDefinition(List<MyBeanDefinition> myBeanDefinitions) {
@@ -98,18 +98,20 @@ public class MyApplicationContext {
 
         Class<?> beanClass = beanWrapper.getWrapperClass();
 
-        if (!beanClass.isAnnotationPresent(MyComponent.class)) {
+       /* if (!beanClass.isAnnotationPresent(MyComponent.class)) {
             return;
-        }
+        }*/
 
-        for (Field field : beanClass.getFields()) {
+       /* 在 get 属性的时候 未使用 getDeclaredFields 而是使用了 getFields */
+        for (Field field : beanClass.getDeclaredFields()) {
 
-            if (!field.getClass().isAnnotationPresent(MyAutoWired.class)) {
+            if (!field.isAnnotationPresent(MyAutoWired.class)) {
                 continue;
             }
 
             MyQualifier qualifier = field.getClass().getAnnotation(MyQualifier.class);
-            String qualifierBeanName = qualifier.value().trim();
+            /* 未做 null 判断 */
+            String qualifierBeanName = qualifier == null ? "" : qualifier.value().trim();
             if ("".equals(qualifierBeanName)) {
                 qualifierBeanName = field.getType().getName();
             }
@@ -138,8 +140,9 @@ public class MyApplicationContext {
         String className = beanDefinition.getBeanClassName();
         Object instance = null;
 //        将代码变成单例
-        if (this.factoryBeanCache.containsKey(beanName)) {
-            return this.factoryBeanCache.get(beanName);
+        /* 此处未return 备份的对象 */
+        if (this.factoryBeanObjectCache.containsKey(beanName)) {
+            return this.factoryBeanObjectCache.get(beanName);
         }
         try {
             Class<?> aClass = Class.forName(className);
