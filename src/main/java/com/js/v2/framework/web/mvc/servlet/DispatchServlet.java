@@ -97,39 +97,6 @@ public class DispatchServlet extends HttpServlet {
 
 
     }
-    private void doHandlerMapping(String beanName) {
-        Class<?> aClass = applicationContext.getBean(beanName).getClass();
-        if (!aClass.isAnnotationPresent(MyController.class)) {
-            return;
-        }
-        String classUrl = aClass.getAnnotation(MyController.class).value();
-
-        /*
-         * 只处理 public 和 有 MyRequestMapping 注解的
-         * */
-        for (Method method : aClass.getMethods()) {
-            MyRequestMapping myRequestMapping = method.getAnnotation(MyRequestMapping.class);
-            if (myRequestMapping == null) {
-                continue;
-            }
-            String methodUrl = myRequestMapping.value();
-            String key = (classUrl + "/" + methodUrl).replaceAll("/+", "/");
-            handlerMapping.put(key, method);
-        }
-
-
-    }
-
-
-
-    private void handlerMapping() {
-        if (applicationContext.getBeanDefinitionCounts()==0) {
-            return;
-        }
-        applicationContext.getBeanDefinitionNames().forEach(this::doHandlerMapping);
-
-
-    }
 
 
     private void doHandlerMapping(String beanName) {

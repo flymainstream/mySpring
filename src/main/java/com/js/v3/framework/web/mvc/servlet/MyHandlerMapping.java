@@ -2,6 +2,7 @@ package com.js.v3.framework.web.mvc.servlet;
 
 
 import java.lang.reflect.Method;
+import java.util.regex.Pattern;
 
 /**
  * @author name
@@ -12,17 +13,17 @@ import java.lang.reflect.Method;
 
 public class MyHandlerMapping {
 
-    private String url;
+    private Pattern url;
     private Method method;
     private Object methodOfInstance;
 
-    public MyHandlerMapping(String url, Method method, Object methodOfInstance) {
+    public MyHandlerMapping(Pattern url, Method method, Object methodOfInstance) {
         this.url = url;
         this.method = method;
         this.methodOfInstance = methodOfInstance;
     }
 
-    public String getUrl() {
+    public Pattern getUrl() {
         return url;
     }
 

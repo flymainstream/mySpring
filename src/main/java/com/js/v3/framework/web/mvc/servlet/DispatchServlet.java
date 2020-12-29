@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author name
@@ -45,9 +47,7 @@ public class DispatchServlet extends HttpServlet {
 
     private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws InvocationTargetException, IllegalAccessException {
 
-        if (this.handlerMappings.isEmpty()) {
-            return;
-        }
+
         MyHandlerMapping handler = getMyHandlerMapping(req, resp);
 
         if (handler == null) {
@@ -70,9 +70,13 @@ public class DispatchServlet extends HttpServlet {
     }
 
     private MyHandlerMapping getMyHandlerMapping(HttpServletRequest req, HttpServletResponse resp) {
+        if (this.handlerMappings.isEmpty()) {
+            return null;
+        }
         String url = getUrl(req);
         for (MyHandlerMapping element : handlerMappings) {
-            if (element.getUrl().equals(url)) {
+            Matcher matcher = element.getUrl().matcher(url);
+            if (matcher.matches()) {
                 return element;
 
             }
@@ -124,8 +128,9 @@ public class DispatchServlet extends HttpServlet {
                 continue;
             }
             String methodUrl = myRequestMapping.value();
-            String key = (classUrl + "/" + methodUrl).replaceAll("/+", "/");
-            handlerMappings.add(new MyHandlerMapping(key, method, applicationContext.getBean(beanName)));
+            String regex = (classUrl + "/" + methodUrl).replace("\\*",".*").replaceAll("/+", "/");
+
+            handlerMappings.add(new MyHandlerMapping(Pattern.compile(regex), method, applicationContext.getBean(beanName)));
         }
 
 
