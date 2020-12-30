@@ -10,7 +10,7 @@ import java.util.Map;
  */
 public class MyModelAndView {
 
-    String viewName;
+    private String viewName;
     private Map<String, ?> map;
 
     public MyModelAndView(String viewName, Map<String, ?> map) {
@@ -20,5 +20,13 @@ public class MyModelAndView {
 
     public MyModelAndView(String viewName) {
         this.viewName = viewName;
+    }
+
+    public String getViewName() {
+        return viewName;
+    }
+
+    public Map<String, ?> getModel() {
+        return map;
     }
 }

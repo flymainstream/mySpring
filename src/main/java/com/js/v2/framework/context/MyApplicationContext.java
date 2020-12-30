@@ -99,7 +99,7 @@ public class MyApplicationContext {
         Class<?> beanClass = beanWrapper.getWrapperClass();
 
 
-       /* 在 get 属性的时候 未使用 getDeclaredFields 而是使用了 getFields */
+        /* 在 get 属性的时候 未使用 getDeclaredFields 而是使用了 getFields */
         for (Field field : beanClass.getDeclaredFields()) {
 
             if (!field.isAnnotationPresent(MyAutoWired.class)) {
@@ -179,5 +179,10 @@ public class MyApplicationContext {
     public Set<String> getBeanDefinitionNames() {
 
         return this.beanDefinitionMap.keySet();
+    }
+
+    public Properties getConfig() {
+
+        return this.beanDefinitionReader.getConfig();
     }
 }

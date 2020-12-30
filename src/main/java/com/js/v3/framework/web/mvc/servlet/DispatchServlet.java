@@ -9,6 +9,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -30,6 +31,10 @@ public class DispatchServlet extends HttpServlet {
     private Map<String, Object> handlerMapping = new HashMap<>(24);
     private List<MyHandlerMapping> handlerMappings = new ArrayList<>(24);
 
+    private Map<MyHandlerMapping, MyHandlerAdapter> handlerAdapterMap = new HashMap<>(24);
+
+    private List<MyViewResolver> viewResolvers = new ArrayList<>();
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         this.doPost(req, resp);
@@ -45,7 +50,7 @@ public class DispatchServlet extends HttpServlet {
         }
     }
 
-    private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws InvocationTargetException, IllegalAccessException {
+    private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws Exception {
 
 
         /*1. 获得一个handlerMapping*/
@@ -64,16 +69,33 @@ public class DispatchServlet extends HttpServlet {
         MyHandlerAdapter myHandlerAdapter = getMyHandlerAdapter(handler);
 
         /*3. 解析某个函数的形参和返回值之后 封装MyModeAndView返回*/
-        MyModelAndView modelAndView = myHandlerAdapter.handler(req, resp,handler);
+        MyModelAndView modelAndView = myHandlerAdapter.handler(req, resp, handler);
         /*4. 把 modelAndView 变成 ViewResolve*/
-        processDispatchResult(req,resp,modelAndView);
+        processDispatchResult(req, resp, modelAndView);
     }
 
     private MyHandlerAdapter getMyHandlerAdapter(MyHandlerMapping handlerMapping) {
-        return null;
+        if (handlerAdapterMap.isEmpty()) {
+            return null;
+        }
+        return handlerAdapterMap.get(handlerMapping);
     }
 
-    private void processDispatchResult(HttpServletRequest req, HttpServletResponse resp, MyModelAndView myModelAndView)   {
+    private void processDispatchResult(HttpServletRequest req, HttpServletResponse resp, MyModelAndView myModelAndView) throws IOException {
+        if (myModelAndView == null) {
+            resp.getOutputStream().write("123".getBytes());
+        }
+        if (this.viewResolvers.isEmpty()) {
+            resp.getOutputStream().write("123".getBytes());
+        }
+        this.viewResolvers.forEach(element -> {
+
+            MyView view = element.getView(myModelAndView.getViewName());
+            view.render(myModelAndView.getModel(), req, resp);
+
+
+            return;
+        });
 
     }
 
@@ -106,12 +128,62 @@ public class DispatchServlet extends HttpServlet {
         Optional<ServletConfig> sco = Optional.ofNullable(config);
         this.applicationContext = new MyApplicationContext(sco.orElseThrow(this::ThrowRunTime).getInitParameter("application"));
 
-//        5. 分发依赖 反射调用
-        handlerMapping();
+//        初始化九大组件
+        initStrategies(applicationContext);
         System.out.println(" finish init My Spring ");
     }
 
-    private void handlerMapping() {
+    private void initStrategies(MyApplicationContext context) {
+//        初始化多文件上传组件
+//        initMultipartResolver(context);
+//        初始化本地语言环境
+//        initLocaleResolver(context);
+//        初始化模板处理器
+//        initThemeResolver(context);
+//        初始化 url映射器 必备
+        initHandlerMapping(context);
+//        初始化 参数适配器 必备
+        initHandlerAdapters(context);
+//        初始化异常拦截器
+//        initHandlerExceptionResolvers(context);
+//        初始化视图预处理器
+//        initRequestViewNameTranslator(context);
+//        初始化视图转换器
+        initViewResolvers(context);
+//        初始化FlashMap 管理器
+        initFlashMapManager(context);
+
+    }
+
+    private void initFlashMapManager(MyApplicationContext context) {
+    }
+
+    private void initViewResolvers(MyApplicationContext context) {
+        String templateRoot = (String) context.getConfig().getProperty("templateRoot");
+
+        String templateRootFilePath = this.getClass().getClassLoader().getResource(templateRoot).getFile();
+
+        File templateRootFile = new File(templateRootFilePath);
+        for (File file : templateRootFile.listFiles()) {
+            viewResolvers.add(new MyViewResolver(file.getPath()));
+
+        }
+    }
+
+    private void initRequestViewNameTranslator(MyApplicationContext context) {
+    }
+
+    private void initHandlerExceptionResolvers(MyApplicationContext context) {
+    }
+
+    private void initHandlerAdapters(MyApplicationContext context) {
+        handlerMappings.forEach(element -> {
+            handlerAdapterMap.put(element, new MyHandlerAdapter());
+        });
+
+    }
+
+    private void initHandlerMapping(MyApplicationContext context) {
         if (applicationContext.getBeanDefinitionCounts() == 0) {
             return;
         }
@@ -119,6 +191,19 @@ public class DispatchServlet extends HttpServlet {
 
 
     }
+
+    private void initThemeResolver(MyApplicationContext context) {
+    }
+
+    private void initLocaleResolver(MyApplicationContext context) {
+
+
+    }
+
+    private void initMultipartResolver(MyApplicationContext context) {
+
+    }
+
 
     private void doHandlerMapping(String beanName) {
         Class<?> aClass = applicationContext.getBean(beanName).getClass();

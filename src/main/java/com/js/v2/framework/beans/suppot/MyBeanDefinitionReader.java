@@ -21,7 +21,7 @@ import java.util.Properties;
  */
 public class MyBeanDefinitionReader {
 
-//    private String[] configLocations;
+    //    private String[] configLocations;
     private List<String> registerBeanNames = new ArrayList<String>(24);
     private Properties contextConfig = new Properties();
 
@@ -135,4 +135,7 @@ public class MyBeanDefinitionReader {
     }
 
 
+    public Properties getConfig() {
+        return contextConfig;
+    }
 }

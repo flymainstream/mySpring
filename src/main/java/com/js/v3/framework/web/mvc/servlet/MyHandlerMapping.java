@@ -34,4 +34,24 @@ public class MyHandlerMapping {
     public Object getMethodOfInstance() {
         return methodOfInstance;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        MyHandlerMapping that = (MyHandlerMapping) o;
+
+        if (url != null ? !url.equals(that.url) : that.url != null) return false;
+        if (method != null ? !method.equals(that.method) : that.method != null) return false;
+        return methodOfInstance != null ? methodOfInstance.equals(that.methodOfInstance) : that.methodOfInstance == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = url != null ? url.hashCode() : 0;
+        result = 31 * result + (method != null ? method.hashCode() : 0);
+        result = 31 * result + (methodOfInstance != null ? methodOfInstance.hashCode() : 0);
+        return result;
+    }
 }
