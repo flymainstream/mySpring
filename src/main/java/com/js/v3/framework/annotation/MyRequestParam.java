@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * @dateTime 20:46
  * @description:
  */
-@Target({ElementType.FIELD})
+@Target({ ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MyRequestParam {
     String value() default "";
