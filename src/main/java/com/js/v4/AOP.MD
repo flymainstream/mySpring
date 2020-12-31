@@ -36,3 +36,11 @@ JAVA中代理方式有两种：
     2. 继承被代理的类
     在被增强 类的前后织入代码，生成一个新的临时类 (Aspect)
     
+
+流程:
+    IOC - AOP - DI - MVC 
+        
+ 
+Spring 设计:
+ getBean 函数触发 --> ApplicationContext   --> AdvisedSupport --> AopConfig --> Advice
+ --> jdkDynamicAopProxy
