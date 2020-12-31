@@ -31,7 +31,7 @@ public class MyBeanDefinitionReader {
         this.classScanning(contextConfig.getProperty("classSrc"));
     }
 
-    public MyBeanDefinition loadBeanDefinition() {
+    public List<MyBeanDefinition> loadBeanDefinition() {
 
         List<MyBeanDefinition> myBeanDefinitions = new ArrayList<>();
         registerBeanNames.forEach(className -> {
@@ -57,7 +57,7 @@ public class MyBeanDefinitionReader {
                 e.printStackTrace();
             }
         });
-        return null;
+        return myBeanDefinitions;
     }
 
     private MyBeanDefinition getMyBeanDefinition(String beanName, String className) {
@@ -136,4 +136,7 @@ public class MyBeanDefinitionReader {
     }
 
 
+    public Properties getConfig() {
+        return contextConfig;
+    }
 }

@@ -135,7 +135,4 @@ public class MyBeanDefinitionReader {
     }
 
 
-    public Properties getConfig() {
-        return contextConfig;
-    }
 }

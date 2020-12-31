@@ -20,7 +20,8 @@ public class DomeController {
     public MyModelAndView dome() {
 
         HashMap<String, String> echoMap = new HashMap<>();
-        echoMap.put("Sophie","Jimmy");
+        echoMap.put("Jimmy","Jimmy");
+        echoMap.put("Sophie","Sophie");
         return new MyModelAndView("index",echoMap);
     }
 }

@@ -42,7 +42,7 @@ public class MyView {
                 String group = matcher.group();
                 String paraName = group.replaceAll("\\^\\{|\\}", "");
                 Object paramVlue = model.get(paraName);
-                line = paramVlue.toString();
+                line = matcher.replaceFirst(makeStringForRegExp(paramVlue.toString()));
                 matcher = pattern.matcher(line);
             }
             sb.append(line);
@@ -50,5 +50,17 @@ public class MyView {
         }
         resp.setCharacterEncoding("utf-8");
         resp.getWriter().write(sb.toString());
+    }
+
+    //处理特殊字符
+    public static String makeStringForRegExp(String str) {
+        return str.replace("\\", "\\\\").replace("*", "\\*")
+                .replace("+", "\\+").replace("|", "\\|")
+                .replace("{", "\\{").replace("}", "\\}")
+                .replace("(", "\\(").replace(")", "\\)")
+                .replace("^", "\\^").replace("$", "\\$")
+                .replace("[", "\\[").replace("]", "\\]")
+                .replace("?", "\\?").replace(",", "\\,")
+                .replace(".", "\\.").replace("&", "\\&");
     }
 }

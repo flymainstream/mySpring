@@ -16,8 +16,8 @@ public class MyViewResolver {
     private File templateDir;
 
     public MyViewResolver(String templateRoot) {
-        String templateRootPath = this.getClass().getClassLoader().getResource(templateRoot).getFile();
-        templateDir = new File(templateRootPath);
+//        String templateRootPath = this.getClass().getClassLoader().getResource(templateRoot).getFile();
+        templateDir = new File(templateRoot);
     }
 
 
@@ -27,7 +27,7 @@ public class MyViewResolver {
         }
         viewName = viewName.endsWith(TEMPLATE_END) ? viewName : viewName + TEMPLATE_END;
 
-        File tempFile = new File((templateDir.getPath() + "/" + viewName).replaceAll("/+", ""));
+        File tempFile = new File((templateDir.getPath() + "/" + viewName).replaceAll("/+", "/"));
 
         return new MyView(tempFile);
     }

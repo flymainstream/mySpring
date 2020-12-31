@@ -1,8 +1,8 @@
 package com.js.v3.framework.web.mvc.servlet;
 
-import com.js.v1.MyController;
-import com.js.v1.MyRequestMapping;
-import com.js.v2.framework.context.MyApplicationContext;
+import com.js.v3.framework.annotation.MyController;
+import com.js.v3.framework.annotation.MyRequestMapping;
+import com.js.v3.framework.context.MyApplicationContext;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -11,7 +11,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -28,7 +27,6 @@ public class DispatchServlet extends HttpServlet {
     private MyApplicationContext applicationContext;
 
 
-    private Map<String, Object> handlerMapping = new HashMap<>(24);
     private List<MyHandlerMapping> handlerMappings = new ArrayList<>(24);
 
     private Map<MyHandlerMapping, MyHandlerAdapter> handlerAdapterMap = new HashMap<>(24);
@@ -58,7 +56,6 @@ public class DispatchServlet extends HttpServlet {
 
         if (handler == null) {
             try {
-//                resp.getWriter().write(" 404 Not Found !!! ");
                 processDispatchResult(req, resp, new MyModelAndView("404"));
                 return;
             } catch (Exception e) {
@@ -90,12 +87,17 @@ public class DispatchServlet extends HttpServlet {
         }
         this.viewResolvers.forEach(element -> {
 
-            MyView view = element.getView(myModelAndView.getViewName());
-            view.render(myModelAndView.getModel(), req, resp);
+            try {
+                MyView view = element.getView(myModelAndView.getViewName());
+                view.render(myModelAndView.getModel(), req, resp);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
 
-            return;
         });
+
+        return;
 
     }
 
@@ -159,15 +161,15 @@ public class DispatchServlet extends HttpServlet {
     }
 
     private void initViewResolvers(MyApplicationContext context) {
-        String templateRoot = (String) context.getConfig().getProperty("templateRoot");
+        String templateRoot = context.getConfig().getProperty("templateRoot");
 
         String templateRootFilePath = this.getClass().getClassLoader().getResource(templateRoot).getFile();
 
         File templateRootFile = new File(templateRootFilePath);
-        for (File file : templateRootFile.listFiles()) {
-            viewResolvers.add(new MyViewResolver(file.getPath()));
+//        for (File file : templateRootFile.listFiles()) {
+        viewResolvers.add(new MyViewResolver(templateRootFile.getPath()));
 
-        }
+//        }
     }
 
     private void initRequestViewNameTranslator(MyApplicationContext context) {
@@ -221,7 +223,7 @@ public class DispatchServlet extends HttpServlet {
                 continue;
             }
             String methodUrl = myRequestMapping.value();
-            String regex = (classUrl + "/" + methodUrl).replace("\\*", ".*").replaceAll("/+", "/");
+            String regex = (classUrl + "/" + methodUrl).replaceAll("\\*", ".*").replaceAll("/+", "/");
 
             handlerMappings.add(new MyHandlerMapping(Pattern.compile(regex), method, applicationContext.getBean(beanName)));
         }

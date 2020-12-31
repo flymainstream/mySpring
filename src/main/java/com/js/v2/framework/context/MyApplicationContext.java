@@ -181,8 +181,5 @@ public class MyApplicationContext {
         return this.beanDefinitionMap.keySet();
     }
 
-    public Properties getConfig() {
 
-        return this.beanDefinitionReader.getConfig();
-    }
 }

@@ -1,7 +1,6 @@
 package com.js.v3.framework.context;
 
 import com.js.v3.framework.annotation.MyAutoWired;
-import com.js.v3.framework.annotation.MyComponent;
 import com.js.v3.framework.annotation.MyQualifier;
 import com.js.v3.framework.beans.config.MyBeanDefinition;
 import com.js.v3.framework.beans.config.MyBeanWrapper;
@@ -20,9 +19,8 @@ import java.util.*;
  */
 public class MyApplicationContext {
 
-    private String[] configLocations;
 
-    private Map<String, MyBeanDefinition> beanDefinitionMap;
+    private Map<String, MyBeanDefinition> beanDefinitionMap=new HashMap<>(24);
     private MyBeanDefinitionReader beanDefinitionReader;
 
     private Map<String, MyBeanWrapper> factoryBeanCache = new HashMap<>(24);
@@ -33,9 +31,9 @@ public class MyApplicationContext {
 //        1. 加载配置文件
         this.beanDefinitionReader = new MyBeanDefinitionReader(configLocations);
 //        2. 解析配置文件 变成BeanDefinition
-        MyBeanDefinition myBeanDefinitions = beanDefinitionReader.loadBeanDefinition();
+        List<MyBeanDefinition> myBeanDefinitions = beanDefinitionReader.loadBeanDefinition();
 //        3. 缓存 BeanDefinition
-        registerBeanDefinition(Arrays.asList(myBeanDefinitions));
+        registerBeanDefinition(myBeanDefinitions);
 //        4. DI
         autoWired();
 
@@ -97,13 +95,13 @@ public class MyApplicationContext {
 
         Class<?> beanClass = beanWrapper.getWrapperClass();
 
-        if (!beanClass.isAnnotationPresent(MyComponent.class)) {
-            return;
-        }
+//        if (!beanClass.isAnnotationPresent(MyComponent.class)) {
+//            return;
+//        }
 
-        for (Field field : beanClass.getFields()) {
+        for (Field field : beanClass.getDeclaredFields()) {
 
-            if (!field.getClass().isAnnotationPresent(MyAutoWired.class)) {
+            if (!field.isAnnotationPresent(MyAutoWired.class)) {
                 continue;
             }
 
@@ -137,8 +135,8 @@ public class MyApplicationContext {
         String className = beanDefinition.getBeanClassName();
         Object instance = null;
 //        将代码变成单例
-        if (this.factoryBeanCache.containsKey(beanName)) {
-            return this.factoryBeanCache.get(beanName);
+        if (this.factoryBeanObjectCache.containsKey(beanName)) {
+            return this.factoryBeanObjectCache.get(beanName);
         }
         try {
             Class<?> aClass = Class.forName(className);
@@ -179,5 +177,10 @@ public class MyApplicationContext {
     public Set<String> getBeanDefinitionNames() {
 
         return this.beanDefinitionMap.keySet();
+    }
+
+    public Properties getConfig() {
+
+        return this.beanDefinitionReader.getConfig();
     }
 }
