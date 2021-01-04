@@ -2,9 +2,13 @@ package com.js.v4.framework.context;
 
 import com.js.v4.framework.annotation.MyAutoWired;
 import com.js.v4.framework.annotation.MyQualifier;
+import com.js.v4.framework.aop.MyJdkDynamicAopProxy;
+import com.js.v4.framework.aop.aspect.MyAdvice;
+import com.js.v4.framework.aop.config.MyAopConfig;
+import com.js.v4.framework.aop.support.MyAdviceSupport;
 import com.js.v4.framework.beans.config.MyBeanDefinition;
 import com.js.v4.framework.beans.config.MyBeanWrapper;
-import com.js.v4.framework.beans.suppot.MyBeanDefinitionReader;
+import com.js.v4.framework.beans.support.MyBeanDefinitionReader;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -20,7 +24,7 @@ import java.util.*;
 public class MyApplicationContext {
 
 
-    private Map<String, MyBeanDefinition> beanDefinitionMap=new HashMap<>(24);
+    private Map<String, MyBeanDefinition> beanDefinitionMap = new HashMap<>(24);
     private MyBeanDefinitionReader beanDefinitionReader;
 
     private Map<String, MyBeanWrapper> factoryBeanCache = new HashMap<>(24);
@@ -72,6 +76,8 @@ public class MyApplicationContext {
 //      1. 实例化配置信息
 
         Object instance = instantiateBean(beanName, beanDefinition);
+//       如果满足条件就直接返回AOP 的 proxy 对象
+        instance = aopProxy(instance, beanDefinition);
 //      2. 封装
         MyBeanWrapper myBeanWrapper = new MyBeanWrapper(instance);
 //      3. 丢到Ioc 之中
@@ -81,6 +87,35 @@ public class MyApplicationContext {
 
         return myBeanWrapper.getInstance();
     }
+
+    private Object aopProxy(Object instance, MyBeanDefinition beanDefinition) {
+
+//        1. 加载AOP 的配置文件
+        MyAdviceSupport config = instanceAopConfig(beanDefinition);
+//        config.setTargetClass(instance.getClass());
+//        config.setTarget(instance);
+
+//        2. 判断是否需要生成代理类
+        if (config.pointCutMath()) {
+            MyJdkDynamicAopProxy aopProxy = new MyJdkDynamicAopProxy();
+            return aopProxy.getProxyInstance();
+        }
+        return instance;
+    }
+
+    private MyAdviceSupport instanceAopConfig(MyBeanDefinition beanDefinition) {
+        MyAopConfig aopConfig = new MyAopConfig();
+        aopConfig.setAspectAfter(this.beanDefinitionReader.getConfig().getProperty("aspectAfter"));
+        aopConfig.setAspectClass(this.beanDefinitionReader.getConfig().getProperty("aspectClass"));
+        aopConfig.setAspectBefore(this.beanDefinitionReader.getConfig().getProperty("aspectBefore"));
+
+        aopConfig.setAspectAfterThrow(this.beanDefinitionReader.getConfig().getProperty("aspectAfterThrow"));
+        aopConfig.setAspectAfterThrowingName(this.beanDefinitionReader.getConfig().getProperty("aspectAfterThrowingName"));
+        aopConfig.setPointCut(this.beanDefinitionReader.getConfig().getProperty("pointCut"));
+
+        return new MyAdviceSupport(aopConfig);
+    }
+
 
     /**
      * @param beanName

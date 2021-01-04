@@ -1,4 +1,4 @@
-package com.js.v4.framework.beans.suppot;
+package com.js.v4.framework.beans.support;
 
 import com.js.v4.framework.beans.config.MyBeanDefinition;
 
@@ -21,7 +21,6 @@ import java.util.Properties;
  */
 public class MyBeanDefinitionReader {
 
-    private String[] configLocations;
     private List<String> registerBeanNames = new ArrayList<String>(24);
     private Properties contextConfig = new Properties();
 
