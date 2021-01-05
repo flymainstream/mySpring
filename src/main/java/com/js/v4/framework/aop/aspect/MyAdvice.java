@@ -15,6 +15,17 @@ public class MyAdvice {
     private Method adviceMethod;
     private String aspectAfterThrowingName;
 
+    public MyAdvice(Object aspect, Method adviceMethod, String aspectAfterThrowingName) {
+        this.aspect = aspect;
+        this.adviceMethod = adviceMethod;
+        this.aspectAfterThrowingName = aspectAfterThrowingName;
+    }
+
+    public MyAdvice(Object aspect, Method adviceMethod) {
+        this.aspect = aspect;
+        this.adviceMethod = adviceMethod;
+    }
+
     public String getAspectAfterThrowingName() {
         return aspectAfterThrowingName;
     }

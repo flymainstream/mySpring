@@ -4,7 +4,9 @@ import com.js.v4.framework.aop.aspect.MyAdvice;
 import com.js.v4.framework.aop.support.MyAdviceSupport;
 
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.Map;
 
 /**
@@ -22,21 +24,40 @@ public class MyJdkDynamicAopProxy implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         Map<String, MyAdvice> adviceMap = adviceConfig.getAdivces(method, null);
+
+        Object value = null;
+
         try {
-//        adviceMap.get("before").invoke;
+            invokeAdvice(adviceMap.get("before"));
 
-            method.invoke(null, args);
+            value = method.invoke(null, args);
 
-//        adviceMap.get("after").invoke;
+            invokeAdvice(adviceMap.get("after"));
         } catch (Exception e) {
-//        adviceMap.get("aspectAfterThrow").invoke;
-
+            invokeAdvice(adviceMap.get("aspectAfterThrow"));
+            throw e;
         }
 
-        return null;
+        return value;
+    }
+
+    private void invokeAdvice(MyAdvice advice) throws InvocationTargetException, IllegalAccessException {
+        advice.getAdviceMethod().invoke(
+                advice.getAspect()
+
+        );
+
     }
 
     public Object getProxyInstance() {
         return null;
+    }
+
+    public Object getProxy() {
+        return Proxy.newProxyInstance(this.getClass().getClassLoader(),
+                this.adviceConfig.getTargetClass().getInterfaces(),
+                this);
+
+
     }
 }

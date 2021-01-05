@@ -92,8 +92,8 @@ public class MyApplicationContext {
 
 //        1. 加载AOP 的配置文件
         MyAdviceSupport config = instanceAopConfig(beanDefinition);
-//        config.setTargetClass(instance.getClass());
-//        config.setTarget(instance);
+        config.setTargetClass(instance.getClass());
+        config.setTarget(instance);
 
 //        2. 判断是否需要生成代理类
         if (config.pointCutMath()) {
