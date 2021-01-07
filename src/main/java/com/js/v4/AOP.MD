@@ -44,3 +44,14 @@ JAVA中代理方式有两种：
 Spring 设计:
  getBean 函数触发 --> ApplicationContext   --> AdvisedSupport --> AopConfig --> Advice
  --> jdkDynamicAopProxy
+
+
+AOP 实现关键要素:
+时机:
+    在IoC 容器之后, 在DI之前
+要素:
+    1.解析 AopConfig, 根据AopConfig生成一个个 Advice 
+    2.映射被切面 函数 与 advice之间的关系
+    3.在代理中调用函数
+    
+            

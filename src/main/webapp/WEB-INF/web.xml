@@ -8,12 +8,14 @@
 		<servlet-name>disServlet</servlet-name>
 <!--		<servlet-class>com.js.v1.DispatchServlet</servlet-class>-->
 <!--		<servlet-class>com.js.v2.framework.web.mvc.servlet.DispatchServlet</servlet-class>-->
-		<servlet-class>com.js.v3.framework.web.mvc.servlet.DispatchServlet</servlet-class>
+<!--		<servlet-class>com.js.v3.framework.web.mvc.servlet.DispatchServlet</servlet-class>-->
+		<servlet-class>com.js.v4.framework.web.mvc.servlet.DispatchServlet</servlet-class>
 		<init-param>
 			<param-name>application</param-name>
 <!--			<param-value>v1/application.properties</param-value>-->
 <!--			<param-value>classpath:/v2/application.properties</param-value>-->
-			<param-value>classpath:/v3/application.properties</param-value>
+<!--			<param-value>classpath:/v3/application.properties</param-value>-->
+			<param-value>classpath:/v4/application.properties</param-value>
 		</init-param>
 		<load-on-startup>1</load-on-startup>
 	</servlet>
