@@ -23,32 +23,25 @@ public class MyAdviceSupport {
     private Object target;
     private Pattern pointCutClassPattern;
 
-    private Map<Method, Map<String, MyAdvice>> methodCatch;
+    private Map<Method, Map<String, MyAdvice>> methodCatch = new HashMap<>(24);
 
     public MyAdviceSupport(MyAopConfig aopConfig) {
         config = aopConfig;
     }
 
-    public Map<String, MyAdvice> getAdivces(Method method, Object o) throws NoSuchMethodException {
-        Map<String, MyAdvice> adviceMap = methodCatch.get(method);
-
-        if (adviceMap == null) {
-        /*    adviceMap = new HashMap<>();
-            MyAdvice after = new MyAdvice();
-            adviceMap.put(config.getAspectAfter(), after);
-*/
-//            Method preMethod = targetClass.getMethod(method.getName(), method.getParameterTypes());
-
-            this.methodCatch.put(method, adviceMap);
-
-
+    public Map<String, MyAdvice> getAdivces(Method method) throws NoSuchMethodException {
+        Map<String, MyAdvice> cached = methodCatch.get(method);
+        if (cached == null) {
+            Method tempMethod = targetClass.getMethod(method.getName(), method.getParameterTypes());
+            cached = methodCatch.get(tempMethod);
         }
 
-        return adviceMap;
+        return cached==null ? new HashMap<>() : cached;
     }
 
     public boolean pointCutMath() {
-        return false;
+
+        return pointCutClassPattern.matcher(this.targetClass.toString()).matches();
     }
 
     public void setConfig(MyAopConfig config) {
@@ -63,16 +56,17 @@ public class MyAdviceSupport {
 
     private void parse() {
         String point = config.getPointCut()
-                .replace("\\.", "\\\\.")
-                .replace("\\\\.\\*", ".*")
-                .replace("\\(", "\\\\(")
-                .replace("\\)", "\\\\)");
+                .replaceAll("\\.", "\\\\.")
+                .replaceAll("\\\\.\\*", ".*")
+                .replaceAll("\\(", "\\\\(")
+                .replaceAll("\\)", "\\\\)");
 
 //        解析 point分为三段
 //        1. 方法的修饰符和返回值
 //        2. 类名
         String pointCutClassRegex = point.substring(0, point.lastIndexOf("\\(") - 4);
-        pointCutClassRegex = "class " + pointCutClassRegex.substring(pointCutClassRegex.lastIndexOf("") + 1);
+        pointCutClassRegex =
+                "class " + pointCutClassRegex.substring(pointCutClassRegex.lastIndexOf(" ") + 1);
         pointCutClassPattern = Pattern.compile(pointCutClassRegex);
 //        3. 方法的名称和新参列表
         Pattern pointCutPatten = Pattern.compile(point);
@@ -83,7 +77,7 @@ public class MyAdviceSupport {
             Map<String, Method> aspectMethods = new HashMap<>();
 
             for (Method method : aspectClass.getMethods()) {
-                aspectMethods.put(method.getName(), method);
+                aspectMethods.put(aspectClass.getName()+"."+method.getName(), method);
             }
 
 
@@ -157,7 +151,5 @@ public class MyAdviceSupport {
         return pointCutClassPattern;
     }
 
-    public Map<Method, Map<String, MyAdvice>> getMethodCatch() {
-        return methodCatch;
-    }
+
 }

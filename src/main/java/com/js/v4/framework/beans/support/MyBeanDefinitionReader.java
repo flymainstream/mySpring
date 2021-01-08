@@ -62,17 +62,19 @@ public class MyBeanDefinitionReader {
     private MyBeanDefinition getMyBeanDefinition(String beanName, String className) {
         MyBeanDefinition myBeanDefinition = new MyBeanDefinition();
 //               保存className
-        myBeanDefinition.setBeanClassName(className);
+        myBeanDefinition.setBeanClassName(className.trim());
 
 //                保存BeanName
 
-        myBeanDefinition.setFactoryBeanName(beanName);
+        myBeanDefinition.setFactoryBeanName(beanName.trim());
         return myBeanDefinition;
     }
 
     private String toLowerFirstCase(String simpleName) {
         char[] chars = simpleName.toCharArray();
-        chars[0] += 32;
+        if (chars[0] <= 65 && chars[0] >= 90) {
+            chars[0] += 32;
+        }
         return String.valueOf(chars);
     }
 

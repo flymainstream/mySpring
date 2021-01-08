@@ -21,16 +21,20 @@ public class MyJdkDynamicAopProxy implements InvocationHandler {
 
     private MyAdviceSupport adviceConfig;
 
+    public MyJdkDynamicAopProxy(MyAdviceSupport config) {
+        adviceConfig = config;
+    }
+
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        Map<String, MyAdvice> adviceMap = adviceConfig.getAdivces(method, null);
+        Map<String, MyAdvice> adviceMap = adviceConfig.getAdivces(method );
 
         Object value = null;
 
         try {
             invokeAdvice(adviceMap.get("before"));
 
-            value = method.invoke(null, args);
+            value = method.invoke(adviceConfig.getTarget(), args);
 
             invokeAdvice(adviceMap.get("after"));
         } catch (Exception e) {
@@ -42,22 +46,20 @@ public class MyJdkDynamicAopProxy implements InvocationHandler {
     }
 
     private void invokeAdvice(MyAdvice advice) throws InvocationTargetException, IllegalAccessException {
+        if (advice == null) {
+            return;
+        }
         advice.getAdviceMethod().invoke(
                 advice.getAspect()
-
         );
 
     }
 
     public Object getProxyInstance() {
-        return null;
-    }
-
-    public Object getProxy() {
-        return Proxy.newProxyInstance(this.getClass().getClassLoader(),
+        return Proxy.newProxyInstance(
+                this.getClass().getClassLoader(),
                 this.adviceConfig.getTargetClass().getInterfaces(),
                 this);
-
-
     }
+
 }

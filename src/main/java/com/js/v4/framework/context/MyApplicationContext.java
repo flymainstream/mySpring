@@ -3,7 +3,6 @@ package com.js.v4.framework.context;
 import com.js.v4.framework.annotation.MyAutoWired;
 import com.js.v4.framework.annotation.MyQualifier;
 import com.js.v4.framework.aop.MyJdkDynamicAopProxy;
-import com.js.v4.framework.aop.aspect.MyAdvice;
 import com.js.v4.framework.aop.config.MyAopConfig;
 import com.js.v4.framework.aop.support.MyAdviceSupport;
 import com.js.v4.framework.beans.config.MyBeanDefinition;
@@ -27,8 +26,24 @@ public class MyApplicationContext {
     private Map<String, MyBeanDefinition> beanDefinitionMap = new HashMap<>(24);
     private MyBeanDefinitionReader beanDefinitionReader;
 
+    /**
+     * bean工厂
+     */
     private Map<String, MyBeanWrapper> factoryBeanCache = new HashMap<>(24);
+    /**
+     * 原生对象缓存
+     */
     private Map<String, Object> factoryBeanObjectCache = new HashMap<>(24);
+
+    /**
+     * 代理 类缓存
+     */
+    Map<String, MyJdkDynamicAopProxy> proxyCatch = new HashMap<>(24);
+
+    /**
+     * 初次出入失败对象的缓存
+     */
+    private Map<String, MyBeanDefinition> populateAgain = new HashMap(24);
 
     public MyApplicationContext(String... configLocations) {
 
@@ -45,11 +60,9 @@ public class MyApplicationContext {
 
     private void autoWired() {
 
-        beanDefinitionMap.forEach((key, value) -> {
+        beanDefinitionMap.forEach(this::getBean);
 
-            getBean(key, value);
-
-        });
+        populateAgain.forEach(this::getBean);
     }
 
     private void registerBeanDefinition(List<MyBeanDefinition> myBeanDefinitions) {
@@ -59,9 +72,6 @@ public class MyApplicationContext {
             String className = beanDefinition.getBeanClassName();
             if (beanDefinitionMap.containsKey(factoryName)) {
                 throw new RuntimeException(" factory name already  exist");
-            }
-            if (beanDefinitionMap.containsKey(className)) {
-                throw new RuntimeException(" class name already  exist");
             }
 
             beanDefinitionMap.put(factoryName, beanDefinition);
@@ -76,13 +86,13 @@ public class MyApplicationContext {
 //      1. 实例化配置信息
 
         Object instance = instantiateBean(beanName, beanDefinition);
-//       如果满足条件就直接返回AOP 的 proxy 对象
+//      2. AOP 如果满足条件就直接返回AOP 的 proxy 对象
         instance = aopProxy(instance, beanDefinition);
-//      2. 封装
+//      3. 封装
         MyBeanWrapper myBeanWrapper = new MyBeanWrapper(instance);
-//      3. 丢到Ioc 之中
+//      4. 丢到Ioc 之中
         factoryBeanCache.put(beanName, myBeanWrapper);
-//      4. 执行依赖注入
+//      5. 执行依赖注入
         populateBean(beanName, beanDefinition, myBeanWrapper);
 
         return myBeanWrapper.getInstance();
@@ -91,19 +101,28 @@ public class MyApplicationContext {
     private Object aopProxy(Object instance, MyBeanDefinition beanDefinition) {
 
 //        1. 加载AOP 的配置文件
-        MyAdviceSupport config = instanceAopConfig(beanDefinition);
-        config.setTargetClass(instance.getClass());
-        config.setTarget(instance);
+        MyAdviceSupport config = instanceAopConfig();
+        if (config.getConfig().getPointCut().length() < 1) {
+            return instance;
 
+        }
+        config.setTarget(instance);
+        config.setTargetClass(instance.getClass());
 //        2. 判断是否需要生成代理类
         if (config.pointCutMath()) {
-            MyJdkDynamicAopProxy aopProxy = new MyJdkDynamicAopProxy();
+
+
+            if (proxyCatch.containsKey(beanDefinition.getBeanClassName())) {
+                return proxyCatch.get(beanDefinition.getBeanClassName()).getProxyInstance();
+            }
+            MyJdkDynamicAopProxy aopProxy = new MyJdkDynamicAopProxy(config);
+            proxyCatch.put(beanDefinition.getBeanClassName(), aopProxy);
             return aopProxy.getProxyInstance();
         }
         return instance;
     }
 
-    private MyAdviceSupport instanceAopConfig(MyBeanDefinition beanDefinition) {
+    private MyAdviceSupport instanceAopConfig() {
         MyAopConfig aopConfig = new MyAopConfig();
         aopConfig.setAspectAfter(this.beanDefinitionReader.getConfig().getProperty("aspectAfter"));
         aopConfig.setAspectClass(this.beanDefinitionReader.getConfig().getProperty("aspectClass"));
@@ -140,15 +159,18 @@ public class MyApplicationContext {
                 continue;
             }
 
-            MyQualifier qualifier = field.getClass().getAnnotation(MyQualifier.class);
-            String qualifierBeanName = qualifier.value().trim();
+            String qualifierBeanName = getUserSetBeanName(field);
             if ("".equals(qualifierBeanName)) {
                 qualifierBeanName = field.getType().getName();
             }
-
+            if (factoryBeanCache.get(qualifierBeanName) == null) {
+                populateAgain.put(qualifierBeanName, beanDefinition);
+                return;
+            }
 
             field.setAccessible(true);
             try {
+
                 field.set(instance, factoryBeanCache.get(qualifierBeanName).getInstance());
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
@@ -157,6 +179,15 @@ public class MyApplicationContext {
         }
 
 
+    }
+
+    private String getUserSetBeanName(Field field) {
+        String qualifierBeanName = "";
+        MyQualifier qualifier = field.getClass().getAnnotation(MyQualifier.class);
+        if (qualifier != null) {
+            qualifierBeanName = qualifier.value().trim();
+        }
+        return qualifierBeanName;
     }
 
     /**
