@@ -1,4 +1,10 @@
 
+Ioc:
+
+ApplicationContext.refresh()  --> 重新初始化 applicationContext 
+obtainFreshBeanFactory() --> 创建BeanFactory 
+loadBeanDefinitions() --> 加载BeanDefinition 
+
 
 
 
@@ -6,7 +12,7 @@
 
 DI:
 
-getBean 
+ApplicationContext.getBean() 
 doGetBean
 createBean
 doCreateBean 
